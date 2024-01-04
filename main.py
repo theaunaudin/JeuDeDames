@@ -32,14 +32,17 @@ class Piece:
 plateau = [[None] * 8 for _ in range(8)]
 
 # Placement initial des pièces (exemples)
-for i in range(0, 8, 2):
+for i in range(1, 8, 2):
     for j in range(0, 3, 2):
         plateau[j][i] = Piece(BLEU, j, i)
-        plateau[7-j][i] = Piece(VERT, j, i)
-        
-for i in range(1, 8, 2):
+
+for i in range(0, 8, 2):
     for j in range(1, 8, 7):
         plateau[j][i] = Piece(BLEU, j, i)
+
+for i in range(0, 8, 2):
+    for j in range(0, 3, 2):
+        plateau[7-j][i] = Piece(VERT, j, i)
 
 for i in range(1, 8, 2):
     for j in range(6, 8, 2):
