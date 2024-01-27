@@ -16,6 +16,10 @@ class Pion:
         self.couleur = couleur
         self.ligne = ligne
         self.colonne = colonne
+        self.dame = False
+
+    def devient_dame(self):
+        self.dame = True
 
 # Initialiser le plateau de jeu avec des zéros pour représenter les cases vides, j'ai mis des dimensions de 10,10
 #pour éviter le "out of bands" quand un pion en bordure peut manger un pion
@@ -52,29 +56,39 @@ def dessiner_pions():
     for i in range(8):
         for j in range(8):
             if plateau[i, j] == 1:
-                pygame.draw.circle(fenetre, rouge, (j * taille_case + taille_case // 2, i * taille_case + taille_case // 2), taille_case // 2 - 5)
+                couleur = rouge_foncé if pion_selectionne is not None and pion_selectionne.ligne == i and pion_selectionne.colonne == j and pion_selectionne.dame else rouge
+                pygame.draw.circle(fenetre, couleur, (j * taille_case + taille_case // 2, i * taille_case + taille_case // 2), taille_case // 2 - 5)
             elif plateau[i, j] == 2:
-                pygame.draw.circle(fenetre, bleu, (j * taille_case + taille_case // 2, i * taille_case + taille_case // 2), taille_case // 2 - 5)
-            elif plateau[i, j] == 3:
-                pygame.draw.circle(fenetre, rouge_foncé, (j * taille_case + taille_case // 2, i * taille_case + taille_case // 2), taille_case // 2 - 5)
-            elif plateau[i, j] == 4:
-                pygame.draw.circle(fenetre, bleu_foncé, (j * taille_case + taille_case // 2, i * taille_case + taille_case // 2), taille_case // 2 - 5)
+                couleur = bleu_foncé if pion_selectionne is not None and pion_selectionne.ligne == i and pion_selectionne.colonne == j and pion_selectionne.dame else bleu
+                pygame.draw.circle(fenetre, couleur, (j * taille_case + taille_case // 2, i * taille_case + taille_case // 2), taille_case // 2 - 5)
+                
 
 def deplacements_valides(pion): # Fonction qui détermine les positions où le pion peut être déplacé
     deplacements = []
-    if pion.couleur == 1:
-        if pion.ligne >= 0:
+    if pion.dame == False:
+        if pion.couleur == 1:
+            if pion.ligne >= 0:
+                if plateau[pion.ligne + 1, pion.colonne + 1] == 0:
+                    deplacements.append((pion.ligne + 1, pion.colonne + 1))
+                if plateau[pion.ligne + 1, pion.colonne - 1] == 0:
+                    deplacements.append((pion.ligne + 1, pion.colonne - 1))
+        elif pion.couleur == 2:
+            if pion.ligne <= 7:
+                if plateau[pion.ligne - 1, pion.colonne + 1] == 0:
+                    deplacements.append((pion.ligne - 1, pion.colonne + 1))
+                if plateau[pion.ligne - 1, pion.colonne - 1] == 0:
+                    deplacements.append((pion.ligne - 1, pion.colonne - 1))
+    elif pion.dame == True:
+        if pion.couleur == 3 or pion.couleur == 4:
             if plateau[pion.ligne + 1, pion.colonne + 1] == 0:
                 deplacements.append((pion.ligne + 1, pion.colonne + 1))
             if plateau[pion.ligne + 1, pion.colonne - 1] == 0:
                 deplacements.append((pion.ligne + 1, pion.colonne - 1))
-    elif pion.couleur == 2:
-        if pion.ligne <= 7:
             if plateau[pion.ligne - 1, pion.colonne + 1] == 0:
                 deplacements.append((pion.ligne - 1, pion.colonne + 1))
             if plateau[pion.ligne - 1, pion.colonne - 1] == 0:
                 deplacements.append((pion.ligne - 1, pion.colonne - 1))
-    return deplacements
+    return deplacements    
 
 def manger_un_pion(pion):  # Fonction qui détermine les positions où le pion peut en manger un adverse
     deplacements_pour_manger = []
@@ -93,12 +107,15 @@ def manger_un_pion(pion):  # Fonction qui détermine les positions où le pion p
     return deplacements_pour_manger
 
 def devient_dame(pion):
-    devient_dame_liste = []
     if pion.couleur == 1 and pion.ligne == 7:
-        devient_dame_liste.append((pion.ligne, pion.colonne))
+        pion.dame = True
+        plateau[pion.ligne, pion.colonne] = 0
+        plateau[pion.ligne, pion.colonne] = 3  # 3 représente une dame rouge
     elif pion.couleur == 2 and pion.ligne == 0:
-        devient_dame_liste.append((pion.ligne, pion.colonne))
-    return devient_dame_liste
+        pion.dame = True
+        plateau[pion.ligne, pion.colonne] = 0
+        plateau[pion.ligne, pion.colonne] = 4  # 4 représente une dame bleue
+    return pion
 
 pion_selectionne = None
 
@@ -118,11 +135,14 @@ while en_cours:
                     pion_selectionne = None             
                 else :
                     dest_ligne, dest_colonne = ligne, colonne
-                    if (dest_ligne, dest_colonne) in deplacements_valides(pion_selectionne):
+                    deplacements_possibles = deplacements_valides(pion_selectionne)
+                    deplacements_pour_manger = manger_un_pion(pion_selectionne)
+
+                    if (dest_ligne, dest_colonne) in deplacements_possibles:
                         plateau[dest_ligne, dest_colonne] = plateau[pion_selectionne.ligne, pion_selectionne.colonne]
                         plateau[pion_selectionne.ligne, pion_selectionne.colonne] = 0
                         pion_selectionne = None
-                    elif (dest_ligne, dest_colonne) in manger_un_pion(pion_selectionne):
+                    elif (dest_ligne, dest_colonne) in deplacements_pour_manger:
                         if dest_ligne > pion_selectionne.ligne:
                             direction_ligne = 1
                         else:
@@ -138,11 +158,23 @@ while en_cours:
                         # Déplacer le pion sélectionné
                         plateau[dest_ligne, dest_colonne] = plateau[pion_selectionne.ligne, pion_selectionne.colonne]
                         plateau[pion_selectionne.ligne, pion_selectionne.colonne] = 0
+                        
+                        deplacements_pour_manger_apres = manger_un_pion(Pion(plateau[dest_ligne, dest_colonne], dest_ligne, dest_colonne))
+                        if deplacements_pour_manger_apres:
+                            pion_selectionne = Pion(plateau[dest_ligne, dest_colonne], dest_ligne, dest_colonne)
+                        else:
+                            pion_selectionne = None
+
+                    elif (dest_ligne, dest_colonne) in deplacements_valides(pion_selectionne):
+                        plateau[dest_ligne, dest_colonne] = plateau[pion_selectionne.ligne, pion_selectionne.colonne]
+                        plateau[pion_selectionne.ligne, pion_selectionne.colonne] = 0
                         pion_selectionne = None
+                        pion_selectionne = devient_dame(pion_selectionne)
 
     fenetre.fill(blanc)
     dessiner_plateau()
     dessiner_pions()
+
     
     if pion_selectionne is not None:
         for deplacement in deplacements_valides(pion_selectionne):
@@ -150,9 +182,13 @@ while en_cours:
                 pygame.draw.circle(fenetre, rouge, (deplacement[1] * taille_case + taille_case // 2, deplacement[0] * taille_case + taille_case // 2), taille_case // 4)            
             if pion_selectionne.couleur == 2:
                 pygame.draw.circle(fenetre, bleu, (deplacement[1] * taille_case + taille_case // 2, deplacement[0] * taille_case + taille_case // 2), taille_case // 4)
+            if pion_selectionne.couleur == 3:
+                pygame.draw.circle(fenetre, rouge_foncé, (deplacement[1] * taille_case + taille_case // 2, deplacement[0] * taille_case + taille_case // 2), taille_case // 4)            
+            if pion_selectionne.couleur == 4:
+                pygame.draw.circle(fenetre, bleu_foncé, (deplacement[1] * taille_case + taille_case // 2, deplacement[0] * taille_case + taille_case // 2), taille_case // 4)            
         for deplacement in manger_un_pion(pion_selectionne):
             if pion_selectionne.couleur == 1:
-                pygame.draw.circle(fenetre, rouge, (deplacement[1] * taille_case + taille_case // 2, deplacement[0] * taille_case + taille_case // 2), taille_case // 4)
+                pygame.draw.circle(fenetre, rouge, (deplacement[1] * taille_case + taille_case // 2, deplacement[0] * taille_case + taille_case // 2), taille_case // 4)           
             if pion_selectionne.couleur == 2:
                 pygame.draw.circle(fenetre, bleu, (deplacement[1] * taille_case + taille_case // 2, deplacement[0] * taille_case + taille_case // 2), taille_case // 4)
     
